@@ -1,11 +1,13 @@
 use crate::delete_duplicates::scan_and_delete_duplicate_files;
 use crate::delete_with_extension::delete_files_with_extension;
+use crate::relocate_remuxex_files::move_remux_files_to_transcoded;
 use crate::transcode::probe_and_transcode_flac_audio;
 
 use std::io;
 
 mod delete_duplicates;
 mod delete_with_extension;
+mod relocate_remuxex_files;
 mod transcode;
 
 const RECORDINGS_PATH: &str = "E:\\recordings";
@@ -16,6 +18,7 @@ async fn main() {
     println!("1. Scan and delete duplicate files");
     println!("2. Probe and transcode FLAC audio");
     println!("3. Delete all shitty .llc files");
+    println!("4. Move REMUX MP4 files to 'transcoded' folder");
 
     let mut input = String::new();
     io::stdin()
@@ -32,6 +35,9 @@ async fn main() {
         }
         3 => {
             delete_files_with_extension(RECORDINGS_PATH, "llc").await;
+        }
+        4 => {
+            move_remux_files_to_transcoded(RECORDINGS_PATH).await;
         }
         _ => {
             println!("Invalid choice. Exiting.");

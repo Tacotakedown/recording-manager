@@ -13,27 +13,43 @@ pub async fn probe_and_transcode_flac_audio(path: &str) {
         return;
     }
 
+    let transcoded_folder = recordings_dir.join("transcoded");
+
+    if !transcoded_folder.exists() || !transcoded_folder.is_dir() {
+        println!("'transcoded' folder does not exist. Massive Config issue.");
+        return;
+    }
+
     match fs::read_dir(recordings_dir) {
         Ok(entries) => {
             let mp4_files = get_mp4_files(entries).await;
 
             let mut tasks = Vec::new();
 
-            for entry in mp4_files {
-                let task = tokio::spawn(async move {
-                    let codec_info = probe_mp4_file(&entry).await;
+            for file_path in mp4_files {
+                let transcoded_file_name = format!(
+                    "{}-REMUX.mp4",
+                    file_path.file_stem().unwrap().to_string_lossy()
+                );
 
-                    if let Some(codec_name) = codec_info {
-                        if codec_name == "flac" {
-                            transcode_to_opus(&entry).await;
+                if !transcoded_folder.join(&transcoded_file_name).exists() {
+                    let task = tokio::spawn(async move {
+                        let codec_info = probe_mp4_file(&file_path).await;
+
+                        if let Some(codec_name) = codec_info {
+                            if codec_name == "flac" {
+                                transcode_to_opus(&file_path).await;
+                            }
                         }
-                    }
-                });
+                    });
 
-                tasks.push(task);
+                    tasks.push(task);
+                } else {
+                    println!("video already transcoded, skipping: {:?}", file_path)
+                }
             }
 
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_secs(1)).await; // Ensure all tasks are spawned before exiting
 
             for task in tasks {
                 task.await.expect("Error in task");
